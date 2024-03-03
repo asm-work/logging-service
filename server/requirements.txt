@@ -1,0 +1,5 @@
+pytest
+flask
+requests
+flask_pymongo
+gunicorn
