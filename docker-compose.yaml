@@ -2,13 +2,13 @@ version: "3"
 services:
   message-broker:
     image: rabbitmq:3-management-alpine
-    container_name: 'message-broker'
+    container_name: "message-broker"
     ports:
-        - 5672:5672
-        - 15672:15672
+      - 5672:5672
+      - 15672:15672
     volumes:
-        - ./data/mq:/var/lib/rabbitmq/
-        - ./logs/mq:/var/log/rabbitmq
+      - ./data/mq:/var/lib/rabbitmq/
+      - ./logs/mq:/var/log/rabbitmq
     healthcheck:
       test: rabbitmq-diagnostics -q ping
       interval: 30s
@@ -36,15 +36,12 @@ services:
       - backend-logger
 
   logger:
-    build: 
+    build:
       dockerfile: logger/Dockerfile
-      # can override the arguments
-      args:
-        # Set to false if you want to ignore the tests. default True
-        - RUN_TESTS=True
-        # Specify the exact arguements if needed. By default it will run all the tests in the current directory (.)
-        - TEST_ARGS=-m unit
-    container_name: 'logger'
+    container_name: "logger"
+    env_file:
+      - path: ./logger/config/secrets.env
+        required: false
     depends_on:
       - message-broker
       - db
@@ -54,25 +51,14 @@ services:
     networks:
       - backend-logger
       - backend-db
-  
+
   backend:
-    build: 
+    build:
       dockerfile: server/Dockerfile
-      # can override the arguments
-      args:
-        # Set to false if you want to ignore the tests. default True
-        - RUN_TESTS=False
-        # Specify the exact arguements if needed. By default it will run all the tests in the current directory (.)
-        - TEST_ARGS=.
-    container_name: 'backend'
-    environment:
-      APP_ENV: "dev"
-      APP_DEBUG: "True"
-      APP_PORT: 8080
-      DB_NAME: logger
-      DB_USER: root
-      DB_PASS: root
-      DB_HOST: db
+    container_name: "backend"
+    env_file:
+      - path: ./server/config/secrets.env
+        required: false
     depends_on:
       - logger
       - db
