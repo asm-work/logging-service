@@ -1,14 +1,14 @@
 """
 Base handers
 """
-from abc import ABC, abstractclassmethod
+from abc import ABC, abstractmethod
 
 
 class BaseMessageHandler(ABC):
-    @abstractclassmethod
+    @abstractmethod
     def __init__(self) -> None:
         pass
 
-    @abstractclassmethod
+    @abstractmethod
     def create(self, host: str):
         pass
