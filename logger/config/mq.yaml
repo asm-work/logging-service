@@ -1,13 +1,17 @@
 unit_test:
   is_url_conn: true
-  exchange: "amq.direct"
+  exchange:
+    name: "amq"
+    type: "direct"
   queue: "TEST::NEW"
   durable: True
   prefetch:
     count: 1
 dev:
   is_url_conn: true
-  exchange: "amq.direct"
+  exchange:
+    name: "amq"
+    type: "direct"
   queue: "logger"
   durable: True
   prefetch:
