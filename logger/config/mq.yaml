@@ -4,6 +4,7 @@ unit_test:
     name: "amq"
     type: "direct"
   queue: "TEST::NEW"
+  routing_key: "TEST::NEW"
   durable: True
   prefetch:
     count: 1
@@ -13,6 +14,7 @@ dev:
     name: "amq"
     type: "direct"
   queue: "logger"
+  routing_key: "logger"
   durable: True
   prefetch:
     count: 1

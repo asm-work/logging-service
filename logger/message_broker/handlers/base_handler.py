@@ -33,6 +33,8 @@ class ConnectionMethod(ABC):
 
 class ConnectionHandler(ABC):
 
+    should_reconnect: bool
+    
     @abstractmethod
     def connect(self):
         """Function to create a message queue connection
@@ -62,7 +64,7 @@ class ConnectionHandler(ABC):
         """Returns true if the connection is closing
         """
         pass
-    
+
     @abstractmethod
     def get_connection(self):
         """Returns the MQ connection object
@@ -89,17 +91,18 @@ class ChannelHandler(ABC):
         """This function is used to explicitly set the callback for the channel
         """
         pass
-    
-    @abstractmethod
-    def set_channel(self, channel):
-        """Set the channel value
-        """
-        pass
 
     @abstractmethod
     def set_empty_channel(self):
         """Set the channel to None
         """
+        pass
+    
+    @abstractmethod
+    def get_channel(self):
+        """Return the MQ channel object
+        """
+        pass
 
 
 class ExchangeHandler(ABC):
@@ -107,7 +110,8 @@ class ExchangeHandler(ABC):
     Supported MQs
     - RabbitMQ
     """
-
+    name: str
+    
     @abstractmethod
     def setup_exchange(self, channel):
         """Will declare an exchange for creating queue for certain MQs
@@ -123,14 +127,16 @@ class ExchangeHandler(ABC):
 
 class QueueHandler(ABC):
 
+    name: str
+    
     @abstractmethod
-    def setup_queue(self):
+    def setup_queue(self, channel):
         """Declare a queue for communication
         """
         pass
 
     @abstractmethod
-    def bind_queue(self):
+    def bind_queue(self, *args, **kwargs):
         """To bind the queue
         """
         pass
@@ -156,6 +162,8 @@ class ConsumerHandler(ABC):
     queue: QueueHandler
     
     consuming: bool
+    was_consuming: bool
+    consumer_tag: str
 
     @abstractmethod
     def run(self):
@@ -316,5 +324,10 @@ class ConsumerCallbackHandler(ABC):
     @abstractmethod
     def on_consumer_cancelled(self, *args, **kwargs):
         """Called when consumer is cancelled
+        """
+        pass
+    
+    def on_cancel_ok(self, *args, **kwargs):
+        """On cancel complete (Optional)
         """
         pass
