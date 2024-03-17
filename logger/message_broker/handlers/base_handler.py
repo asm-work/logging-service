@@ -6,15 +6,6 @@ from abc import ABC, abstractmethod
 
 from utils.logger import LoggingHandler
 
-# class BaseMessageHandler(ABC):
-#     @abstractmethod
-#     def __init__(self) -> None:
-#         pass
-
-#     @abstractmethod
-#     def create(self, host: str):
-#         pass
-
 
 class ConnectionMethod(ABC):
 

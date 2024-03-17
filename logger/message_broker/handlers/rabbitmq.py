@@ -20,24 +20,14 @@ from message_broker.handlers.base_handler import (
 )
 from pika.channel import Channel as PikaChannel
 from utils.constants import Config
+from utils.exceptions import (
+    EmptyCallbackErr,
+    EmptyChannelErr,
+    EmptyExchangeErr,
+    InvalidConfigErr,
+    NotConnectedErr,
+)
 from utils.logger import LoggingHandler
-
-# class Client(BaseMessageHandler):
-
-#     def __init__(self, url=None):
-#         self.url = url
-
-#     def generate_url(self, **kwargs):
-#         host = kwargs.get("host")
-#         port = kwargs.get("port")
-#         user = kwargs.get("user")
-#         password = kwargs.get("password")
-#         self.url = f"amqp://{user}:{password}@{host}:{port}/"
-
-#     def create(self):
-#         parms = pika.URLParameters(self.url)
-#         connection = pika.BlockingConnection(parms)
-#         return connection.channel()
 
 
 class URLMethod(ConnectionMethod):
@@ -48,7 +38,8 @@ class URLMethod(ConnectionMethod):
     def get_url(self) -> str | None:
         if self.config.mq.is_url_conn:
             return os.environ.get(Config.MQ_URL.value)
-        # TODO: add exception handler
+        else:
+            raise InvalidConfigErr("config.mq.is_url_conn", self.config.mq.is_url_conn)
 
 
 class ParameterMethod(ConnectionMethod):
@@ -96,6 +87,7 @@ class Connection(ConnectionHandler):
         self._url = conn_method.get_url()
         self._logger = logger
 
+        self.should_reconnect: bool = False
         self._callback: ConnectionCallbackHandler = None
         self._connection: pika.SelectConnection = None
         self._is_conn_closing: bool = False
@@ -103,7 +95,8 @@ class Connection(ConnectionHandler):
 
     def connect(self):
         self._logger.info(f"Connecting to {self._url}")
-        # TODO: Raise exception if callback is not present
+        if not self._callback:
+            raise EmptyCallbackErr(self._callback)
         self._connection = pika.SelectConnection(
             parameters=pika.URLParameters(self._url),
             on_open_callback=self._callback.on_connection_open,
@@ -116,7 +109,10 @@ class Connection(ConnectionHandler):
             self._logger.info("Connection is closing or already closed")
         else:
             self._logger.info("Closing connection")
-            self._connection.close()
+            if self._connection:
+                self._connection.close()
+            else:
+                raise NotConnectedErr(self._connection)
 
     def reconnect(self):
         self.should_reconnect = True
@@ -162,15 +158,22 @@ class Channel(ChannelHandler):
         self._callback: ChannelCallbackHandler = None
 
     def open_channel(self, conn: pika.SelectConnection):
-        # TODO: Raise exception if callback is not present
+        if not conn:
+            raise NotConnectedErr(conn)
+        if not self._callback:
+            raise EmptyCallbackErr(self._callback)
         self._logger.info("Creating a new channel")
         self._channel = conn.channel(on_open_callback=self._callback.on_channel_open)
 
     def close_channel(self):
+        if not self._channel:
+            raise EmptyChannelErr(self._channel)
         self._logger.info("Closing the channel")
         self._channel.close()
 
     def add_on_channel_close_callback(self):
+        if not self._channel:
+            raise EmptyChannelErr(self._channel)
         self._logger.info("Adding channel close callback")
         self._channel.add_on_close_callback(self._callback.on_channel_closed)
 
@@ -208,7 +211,10 @@ class Exchange(ExchangeHandler):
         self._callback: ExchangeCallbackHandler = None
 
     def setup_exchange(self, channel: PikaChannel):
-        # TODO: Raise exception if callback is not present
+        if not channel:
+            raise EmptyChannelErr(channel)
+        if not self._callback:
+            raise EmptyCallbackErr(self._callback)
         self._logger.info(f"Declaring exchange: {self.name}")
         channel.exchange_declare(
             exchange=self.name,
@@ -254,22 +260,35 @@ class Queue(QueueHandler):
         self._callback: QueueCallbackHandler = None
 
     def setup_queue(self, channel: PikaChannel):
-        # TODO: Raise exception if callback is not present
+        if not channel:
+            raise EmptyChannelErr(channel)
+        if not self._callback:
+            raise EmptyCallbackErr(self._callback)
         self._logger.info(f"Declaring queue {self.name}")
         channel.queue_declare(queue=self.name, callback=self._callback.on_queue_declare)
 
     def bind_queue(self, exchange: ExchangeHandler, channel: PikaChannel):
+        if not channel:
+            raise EmptyChannelErr(channel)
+        if not exchange:
+            raise EmptyExchangeErr(exchange)
+        if not self._callback:
+            raise EmptyCallbackErr(self._callback)
         self._logger.info(
-            f"Binding {exchange.name} to {self.name} with {self._routing_key}"
+            f"Binding Exchange: {exchange.name} to Queue: {self.name} with RoutingKey: {self._routing_key}"
         )
         channel.queue_bind(
-            self.name,
-            exchange.name,
+            queue=self.name,
+            exchange=exchange.name,
             routing_key=self._routing_key,
             callback=self._callback.on_queue_bind,
         )
 
     def set_qos(self, channel: PikaChannel):
+        if not channel:
+            raise EmptyChannelErr(channel)
+        if not self._callback:
+            raise EmptyCallbackErr(self._callback)
         self._logger.info(f"QOS set to: {self._prefetch_count}")
         channel.basic_qos(
             prefetch_count=self._prefetch_count, callback=self._callback.on_qos_ok
@@ -329,6 +348,8 @@ class Consumer(ConsumerHandler):
         self.was_consuming: bool = False
 
     def run(self):
+        if not self.connection:
+            raise NotConnectedErr(self.connection)
         self.connection.connect()
         self._connection = self.connection.get_connection()
         self.start_ioloop()
@@ -345,15 +366,22 @@ class Consumer(ConsumerHandler):
             self._logger.info("Stopped")
 
     def start_ioloop(self):
+        if not self._connection:
+            raise NotConnectedErr(self._connection)
         self._connection.ioloop.start()
 
     def stop_ioloop(self):
+        if not self._connection:
+            raise NotConnectedErr(self._connection)
         self._connection.ioloop.stop()
 
     def start_consuming(self):
-        # TODO: Raise exception if callback is not present
+        if not self._msg_callback:
+            raise EmptyCallbackErr(self._msg_callback)
         self._logger.info("Issuing consumer related RPC commands")
         self._channel = self.channel.get_channel()
+        if not self._channel:
+            raise EmptyChannelErr(self._channel)
         self.add_on_cancel_callback()
         self.consumer_tag = self._channel.basic_consume(
             queue=self.queue.name,
@@ -364,12 +392,15 @@ class Consumer(ConsumerHandler):
         self.consuming = True
 
     def stop_consuming(self):
-        # TODO: Raise exception if callback is not present
+        if not self._callback:
+            raise EmptyCallbackErr(self._callback)
         if self._channel:
             self._logger.info("Sending a Basic.Cancel RPC command to RabbitMQ")
             self._channel.basic_cancel(self.consumer_tag, self._callback.on_cancel_ok)
 
     def reconnect_and_stop(self):
+        if not self.connection:
+            raise NotConnectedErr(self.connection)
         self.connection.reconnect()
         self.stop()
 
@@ -379,6 +410,10 @@ class Consumer(ConsumerHandler):
         on_consumer_cancelled will be invoked by pika.
 
         """
+        if not self._channel:
+            raise EmptyChannelErr(self._channel)
+        if not self._callback:
+            raise EmptyCallbackErr(self._callback)
         self._logger.info("Adding consumer cancellation callback")
         self._channel.add_on_cancel_callback(self._callback.on_consumer_cancelled)
 
