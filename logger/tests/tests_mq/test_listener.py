@@ -1,13 +1,15 @@
-import pytest
 from unittest.mock import Mock
-from base_test import BaseTest
+
+import pytest
 from __mock__ import pika
+from base_test import BaseTest
 from message_broker.connect import Connection
 
 
 class TestListener(BaseTest):
 
-    def mocked_handler(self): pass
+    def mocked_handler(self):
+        pass
 
     @pytest.mark.unit
     def test_listener_queue_declared(self, monkeypatch):
@@ -19,7 +21,9 @@ class TestListener(BaseTest):
         conn.subscribe(channel=channel, handler=self.mocked_handler)
 
         channel.queue_declare.assert_called_once_with(
-            queue=self.config_data.mq.unit_test.queue, durable=self.config_data.mq.unit_test.durable)
+            queue=self.config_data.mq.unit_test.queue,
+            durable=self.config_data.mq.unit_test.durable,
+        )
 
     @pytest.mark.unit
     def test_listener_queue_bind(self, monkeypatch):
@@ -31,7 +35,9 @@ class TestListener(BaseTest):
         conn.subscribe(channel=channel, handler=self.mocked_handler)
 
         channel.queue_bind.assert_called_once_with(
-            queue=self.config_data.mq.unit_test.queue, exchange=self.config_data.mq.unit_test.exchange)
+            queue=self.config_data.mq.unit_test.queue,
+            exchange=self.config_data.mq.unit_test.exchange,
+        )
 
     @pytest.mark.unit
     def test_listener_qos(self, monkeypatch):
@@ -43,7 +49,8 @@ class TestListener(BaseTest):
         conn.subscribe(channel=channel, handler=self.mocked_handler)
 
         channel.basic_qos.assert_called_once_with(
-            prefetch_count=self.config_data.mq.unit_test.prefetch.count)
+            prefetch_count=self.config_data.mq.unit_test.prefetch.count
+        )
 
     @pytest.mark.unit
     def test_listener_consume(self, monkeypatch):
@@ -55,4 +62,6 @@ class TestListener(BaseTest):
         conn.subscribe(channel=channel, handler=self.mocked_handler)
 
         channel.basic_consume.assert_called_once_with(
-            queue=self.config_data.mq.unit_test.queue, on_message_callback=self.mocked_handler)
+            queue=self.config_data.mq.unit_test.queue,
+            on_message_callback=self.mocked_handler,
+        )

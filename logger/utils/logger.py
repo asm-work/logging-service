@@ -6,8 +6,7 @@ class LoggingHandler(ABC):
 
     @abstractmethod
     def __init__(self, *args, **kwargs):
-        """Initialize the logger
-        """
+        """Initialize the logger"""
         pass
 
     @abstractmethod
@@ -28,23 +27,22 @@ class LoggingHandler(ABC):
 
 
 class StdOutLogger(LoggingHandler):
-    
+
     def __init__(self):
-        """This logger is only for developement
-        """
+        """This logger is only for development"""
         pass
-    
+
     def debug(self, msg):
-        print(f'Level: DEBUG, Message: {msg}, Time: {time.time}')
-    
+        print(f"Level: DEBUG, Message: {msg}, Time: {time.time}")
+
     def info(self, msg):
-        print(f'Level: INFO, Message: {msg}, Time: {time.time}')
-        
+        print(f"Level: INFO, Message: {msg}, Time: {time.time}")
+
     def error(self, msg):
-        print(f'Level: ERROR, Message: {msg}, Time: {time.time}')
-        
+        print(f"Level: ERROR, Message: {msg}, Time: {time.time}")
+
     def warning(self, msg):
-        print(f'Level: WARNING, Message: {msg}, Time: {time.time}')
-        
+        print(f"Level: WARNING, Message: {msg}, Time: {time.time}")
+
 
 # TODO: Need to implement the file based logging

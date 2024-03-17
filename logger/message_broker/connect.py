@@ -1,11 +1,14 @@
 """
 Implementing the message queue functionality using the handler
 """
+
 import os
 import time
+
 from dotmap import DotMap
 from message_broker.handlers import rabbitmq as mq
 from utils.logger import StdOutLogger
+
 
 class Connection:
     def __init__(self, config) -> None:
@@ -22,48 +25,51 @@ class Connection:
             port = os.environ.get("MQ_PORT")
             user = os.environ.get("MQ_USER", "guest")
             password = os.environ.get("MQ_PASS", "guest")
-            handler.generate_url(host=host, port=port,
-                                 user=user, password=password)
+            handler.generate_url(host=host, port=port, user=user, password=password)
             return handler.create()
 
     def subscribe(self, channel, handler, **kwargs):
         channel.queue_declare(
-            queue=self.config.mq.unit_test.queue, durable=self.config.mq.unit_test.durable)
-        channel.queue_bind(queue=self.config.mq.unit_test.queue,
-                           exchange=self.config.mq.unit_test.exchange)
-        channel.basic_qos(
-            prefetch_count=self.config.mq.unit_test.prefetch.count)
+            queue=self.config.mq.unit_test.queue,
+            durable=self.config.mq.unit_test.durable,
+        )
+        channel.queue_bind(
+            queue=self.config.mq.unit_test.queue,
+            exchange=self.config.mq.unit_test.exchange,
+        )
+        channel.basic_qos(prefetch_count=self.config.mq.unit_test.prefetch.count)
         channel.basic_consume(
-            queue=self.config.mq.unit_test.queue, on_message_callback=handler)
+            queue=self.config.mq.unit_test.queue, on_message_callback=handler
+        )
 
 
 class Connection2:
-    
+
     def __init__(self, config: DotMap):
         self._config = config
-        
+
     def _create_consumer(self):
         # Setting the logger
         # TODO: use the correct logging service (file based or db based)
         self._logger = StdOutLogger()
         # Creating new connection
         conn = mq.Connection(
-            conn_method=mq.URLMethod(self._config), 
-            logger=self._logger)
+            conn_method=mq.URLMethod(self._config), logger=self._logger
+        )
         # Creating new channel
         chan = mq.Channel(logger=self._logger)
         # Creating new exchange
         x = mq.Exchange(
-            name=self._config.mq.exchange.name, 
+            name=self._config.mq.exchange.name,
             ex_type=self._config.mq.exchange.type,
-            logger=self._logger
+            logger=self._logger,
         )
         # Creating new queue
         q = mq.Queue(
             name=self._config.mq.queue,
             routing_key=self._config.mq.routing_key,
             prefetch_count=self._config.mq.prefetch.count,
-            logger=self._logger
+            logger=self._logger,
         )
         # Creating new consumer
         # TODO: Set the message callback
@@ -73,7 +79,7 @@ class Connection2:
             exchange=x,
             queue=q,
             msg_callback=None,
-            logger=self._logger
+            logger=self._logger,
         )
         # Registering Callbacks
         mq.ConnectionCallback(consumer=self._consumer, logger=self._logger)
@@ -81,8 +87,7 @@ class Connection2:
         mq.ExchangeCallback(consumer=self._consumer, logger=self._logger)
         mq.QueueCallback(consumer=self._consumer, logger=self._logger)
         mq.ConsumerCallback(consumer=self._consumer, logger=self._logger)
-        
-        
+
     def run(self):
         while True:
             try:
@@ -91,17 +96,16 @@ class Connection2:
             except KeyboardInterrupt:
                 self._consumer.stop()
                 break
-    
+
     def _maybe_reconnect(self):
-        """Create a new consumer if there is a reconnect request
-        """
+        """Create a new consumer if there is a reconnect request"""
         if self._consumer.connection.should_reconnect:
             self._consumer.stop()
             reconnect_delay = self._get_reconnect_delay()
-            self._logger.info(f'Reconnecting after {reconnect_delay} seconds')
+            self._logger.info(f"Reconnecting after {reconnect_delay} seconds")
             time.sleep(reconnect_delay)
             self._create_consumer()
-    
+
     def _get_reconnect_delay(self):
         # TODO: add a better logic for reconnect delay
         if self._consumer.was_consuming:

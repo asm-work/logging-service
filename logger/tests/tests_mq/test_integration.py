@@ -1,6 +1,5 @@
 """To test the integration for connection and communication with MQ"""
 
-
 import pytest
 
 
