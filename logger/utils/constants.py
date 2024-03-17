@@ -19,6 +19,12 @@ class Config(Enum):
     MQ_PORT_DEFAULT = 5672
     MQ_USER_DEFAULT = "guest"
     MQ_PASS_DEFAULT = "guest"
+    # Logging
+    LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s - %(name)s"
+    LOG_FILE_HANDLER = "file"
+    LOG_STREAM_HANDLER = "stream"
+    LOG_FILE_DIR = "./logs"
+    LOG_FILE_NAME = "event-logs.log"
 
 
 class TestConfig(Enum):

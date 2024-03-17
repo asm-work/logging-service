@@ -6,15 +6,14 @@ from abc import ABC, abstractmethod
 
 from utils.logger import LoggingHandler
 
+# class BaseMessageHandler(ABC):
+#     @abstractmethod
+#     def __init__(self) -> None:
+#         pass
 
-class BaseMessageHandler(ABC):
-    @abstractmethod
-    def __init__(self) -> None:
-        pass
-
-    @abstractmethod
-    def create(self, host: str):
-        pass
+#     @abstractmethod
+#     def create(self, host: str):
+#         pass
 
 
 class ConnectionMethod(ABC):
@@ -58,6 +57,11 @@ class ConnectionHandler(ABC):
     @abstractmethod
     def is_closing(self) -> bool:
         """Returns true if the connection is closing"""
+        pass
+
+    @abstractmethod
+    def set_as_closing(self):
+        """Set the connection value as closing"""
         pass
 
     @abstractmethod
@@ -181,16 +185,11 @@ class ConsumerHandler(ABC):
         """This function is used to explicitly set the callback for the consumer"""
         pass
 
-    @abstractmethod
-    def is_closing(self) -> bool:
-        """Returns true if the consumer is closing"""
-        pass
-
-    def start_ioloop(self) -> bool:
+    def start_ioloop(self):
         """Start the io loop (Method is optional)"""
         pass
 
-    def stop_ioloop(self) -> bool:
+    def stop_ioloop(self):
         """Stop the io loop (Method is optional)"""
         pass
 
@@ -259,11 +258,6 @@ class QueueCallbackHandler(ABC):
     @abstractmethod
     def on_queue_declare(self, *args, **kwargs):
         """Called when a queue is setup correctly and declared ok"""
-        pass
-
-    @abstractmethod
-    def on_queue_bind(self, *args, **kwargs):
-        """Called when a queue bind is ok"""
         pass
 
     @abstractmethod

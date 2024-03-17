@@ -6,7 +6,6 @@ import pika
 from dotmap import DotMap
 from message.handlers.base_handler import MessageHandler
 from message_broker.handlers.base_handler import (
-    BaseMessageHandler,
     ChannelCallbackHandler,
     ChannelHandler,
     ConnectionCallbackHandler,
@@ -23,23 +22,22 @@ from pika.channel import Channel as PikaChannel
 from utils.constants import Config
 from utils.logger import LoggingHandler
 
+# class Client(BaseMessageHandler):
 
-class Client(BaseMessageHandler):
+#     def __init__(self, url=None):
+#         self.url = url
 
-    def __init__(self, url=None):
-        self.url = url
+#     def generate_url(self, **kwargs):
+#         host = kwargs.get("host")
+#         port = kwargs.get("port")
+#         user = kwargs.get("user")
+#         password = kwargs.get("password")
+#         self.url = f"amqp://{user}:{password}@{host}:{port}/"
 
-    def generate_url(self, **kwargs):
-        host = kwargs.get("host")
-        port = kwargs.get("port")
-        user = kwargs.get("user")
-        password = kwargs.get("password")
-        self.url = f"amqp://{user}:{password}@{host}:{port}/"
-
-    def create(self):
-        parms = pika.URLParameters(self.url)
-        connection = pika.BlockingConnection(parms)
-        return connection.channel()
+#     def create(self):
+#         parms = pika.URLParameters(self.url)
+#         connection = pika.BlockingConnection(parms)
+#         return connection.channel()
 
 
 class URLMethod(ConnectionMethod):
@@ -121,13 +119,16 @@ class Connection(ConnectionHandler):
             self._connection.close()
 
     def reconnect(self):
-        self.should_reconnect = False
+        self.should_reconnect = True
 
     def set_callback(self, callback: ConnectionCallbackHandler):
         self._callback = callback
 
     def is_closing(self):
         return self._is_conn_closing
+
+    def set_as_closing(self):
+        self._is_conn_closing = True
 
     def get_connection(self) -> pika.SelectConnection:
         return self._connection
@@ -324,6 +325,8 @@ class Consumer(ConsumerHandler):
         self._connection: pika.SelectConnection = None
         self._callback: ConsumerCallbackHandler = None
         self.consumer_tag: str = None
+        self.consuming: bool = False
+        self.was_consuming: bool = False
 
     def run(self):
         self.connection.connect()
@@ -331,8 +334,8 @@ class Consumer(ConsumerHandler):
         self.start_ioloop()
 
     def stop(self):
-        if not self.connection.is_closing:
-            self.connection.is_closing = True
+        if not self.connection.is_closing():
+            self.connection.set_as_closing()
             self._logger.info("Stopping")
             if self.consuming:
                 self.stop_consuming()
@@ -353,7 +356,9 @@ class Consumer(ConsumerHandler):
         self._channel = self.channel.get_channel()
         self.add_on_cancel_callback()
         self.consumer_tag = self._channel.basic_consume(
-            queue=self.queue.name, callback=self._msg_callback.on_message, auto_ack=True
+            queue=self.queue.name,
+            on_message_callback=self._msg_callback.on_message,
+            auto_ack=True,
         )
         self.was_consuming = True
         self.consuming = True
@@ -362,7 +367,7 @@ class Consumer(ConsumerHandler):
         # TODO: Raise exception if callback is not present
         if self._channel:
             self._logger.info("Sending a Basic.Cancel RPC command to RabbitMQ")
-            self._channel.basic_cancel(self._consumer_tag, self._callback.on_cancel_ok)
+            self._channel.basic_cancel(self.consumer_tag, self._callback.on_cancel_ok)
 
     def reconnect_and_stop(self):
         self.connection.reconnect()

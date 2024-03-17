@@ -5,7 +5,7 @@ The entrypoint for the logger
 import os
 
 from config.config import load_config, load_env
-from message_broker.connect import Connection2
+from message_broker.connect import Connection
 from utils.constants import Config
 
 
@@ -17,5 +17,5 @@ def settings():
 
 
 if __name__ == "__main__":
-    conn = Connection2(config=settings())
+    conn = Connection(config=settings())
     conn.run()

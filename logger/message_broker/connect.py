@@ -2,56 +2,63 @@
 Implementing the message queue functionality using the handler
 """
 
-import os
 import time
 
 from dotmap import DotMap
+from message.write import Message
 from message_broker.handlers import rabbitmq as mq
-from utils.logger import StdOutLogger
+from utils.constants import Config
+from utils.logger import BuiltinLogger
+
+# class Connection:
+#     def __init__(self, config) -> None:
+#         self.config = config
+
+#     def create_channel(self):
+#         # Create a new channel connection with the given parameters
+#         if self.config.mq.is_url_conn:
+#             handler = mq.Client(os.environ.get("MQ_URL"))
+#             return handler.create()
+#         else:
+#             handler = mq.Client()
+#             host = os.environ.get("MQ_HOST")
+#             port = os.environ.get("MQ_PORT")
+#             user = os.environ.get("MQ_USER", "guest")
+#             password = os.environ.get("MQ_PASS", "guest")
+#             handler.generate_url(host=host, port=port, user=user, password=password)
+#             return handler.create()
+
+#     def subscribe(self, channel, handler, **kwargs):
+#         channel.queue_declare(
+#             queue=self.config.mq.unit_test.queue,
+#             durable=self.config.mq.unit_test.durable,
+#         )
+#         channel.queue_bind(
+#             queue=self.config.mq.unit_test.queue,
+#             exchange=self.config.mq.unit_test.exchange,
+#         )
+#         channel.basic_qos(prefetch_count=self.config.mq.unit_test.prefetch.count)
+#         channel.basic_consume(
+#             queue=self.config.mq.unit_test.queue, on_message_callback=handler
+#         )
 
 
 class Connection:
-    def __init__(self, config) -> None:
-        self.config = config
-
-    def create_channel(self):
-        # Create a new channel connection with the given parameters
-        if self.config.mq.is_url_conn:
-            handler = mq.Client(os.environ.get("MQ_URL"))
-            return handler.create()
-        else:
-            handler = mq.Client()
-            host = os.environ.get("MQ_HOST")
-            port = os.environ.get("MQ_PORT")
-            user = os.environ.get("MQ_USER", "guest")
-            password = os.environ.get("MQ_PASS", "guest")
-            handler.generate_url(host=host, port=port, user=user, password=password)
-            return handler.create()
-
-    def subscribe(self, channel, handler, **kwargs):
-        channel.queue_declare(
-            queue=self.config.mq.unit_test.queue,
-            durable=self.config.mq.unit_test.durable,
-        )
-        channel.queue_bind(
-            queue=self.config.mq.unit_test.queue,
-            exchange=self.config.mq.unit_test.exchange,
-        )
-        channel.basic_qos(prefetch_count=self.config.mq.unit_test.prefetch.count)
-        channel.basic_consume(
-            queue=self.config.mq.unit_test.queue, on_message_callback=handler
-        )
-
-
-class Connection2:
 
     def __init__(self, config: DotMap):
         self._config = config
+        self._reconnect_delay = 0
+        self._create_consumer()
 
     def _create_consumer(self):
         # Setting the logger
-        # TODO: use the correct logging service (file based or db based)
-        self._logger = StdOutLogger()
+        # TODO: use the correct logging service (db based)
+        self._logger = BuiltinLogger(
+            name=__name__,
+            log_format=Config.LOG_FORMAT.value,
+            handler=Config.LOG_FILE_HANDLER,
+        )
+        self._logger.info("Initiating a new connection ...")
         # Creating new connection
         conn = mq.Connection(
             conn_method=mq.URLMethod(self._config), logger=self._logger
@@ -78,7 +85,7 @@ class Connection2:
             channel=chan,
             exchange=x,
             queue=q,
-            msg_callback=None,
+            msg_callback=Message(logger=self._logger),
             logger=self._logger,
         )
         # Registering Callbacks
@@ -91,11 +98,13 @@ class Connection2:
     def run(self):
         while True:
             try:
+                self._logger.info("Starting the consumer...")
                 self._consumer.run()
             # TODO: add the exact exception
             except KeyboardInterrupt:
                 self._consumer.stop()
                 break
+            self._maybe_reconnect()
 
     def _maybe_reconnect(self):
         """Create a new consumer if there is a reconnect request"""
