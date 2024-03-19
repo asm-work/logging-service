@@ -39,3 +39,10 @@ class EmptyExchangeErr(Exception):
     def __init__(self, exch: object) -> None:
         self.message = f"Expect an exchange object, got {exch} instead. Make sure to declare the exchange"
         super().__init__(self.message)
+
+
+class EmptyQueueErr(Exception):
+
+    def __init__(self, queue: object) -> None:
+        self.message = f"Expect a queue object, got {queue} instead. Make sure to initialize/declare the queue"
+        super().__init__(self.message)

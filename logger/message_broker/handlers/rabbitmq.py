@@ -24,6 +24,7 @@ from utils.exceptions import (
     EmptyCallbackErr,
     EmptyChannelErr,
     EmptyExchangeErr,
+    EmptyQueueErr,
     InvalidConfigErr,
     NotConnectedErr,
 )
@@ -65,12 +66,20 @@ class ConnectionCallback(ConnectionCallbackHandler):
         self.consumer.connection.set_callback(self)
 
     def on_connection_open(self, connection: pika.SelectConnection):
+        if not connection:
+            raise NotConnectedErr(connection)
+        if not self.consumer.channel:
+            raise EmptyChannelErr(self.consumer.channel)
         self._logger.info("Connection opened")
         self.consumer.channel.open_channel(connection)
 
     def on_connection_closed(self, _connection, reason: str):
+        if not self.consumer.connection:
+            raise NotConnectedErr(self.consumer.connection)
+        if not self.consumer.channel:
+            raise EmptyChannelErr(self.consumer.channel)
         self.consumer.channel.set_empty_channel()
-        if self.consumer.is_closing():
+        if self.consumer.connection.is_closing():
             self.consumer.stop_ioloop()
         else:
             self._logger.warning(f"Connection closed, reconnect necessary: {reason}")
@@ -139,11 +148,17 @@ class ChannelCallback(ChannelCallbackHandler):
         self.consumer.channel.set_callback(self)
 
     def on_channel_open(self, channel: PikaChannel):
+        if not channel:
+            raise EmptyChannelErr(channel)
+        if not self.consumer.exchange:
+            raise EmptyExchangeErr(self.consumer.exchange)
         self._logger.info("Channel opened")
         self.consumer.channel.add_on_channel_close_callback()
         self.consumer.exchange.setup_exchange(channel)
 
     def on_channel_closed(self, _channel, reason: str):
+        if not self.consumer.connection:
+            raise NotConnectedErr(self.consumer.connection)
         self._logger.warning(f"Channel was closed: {reason}")
         self.consumer.consuming = False
         self.consumer.connection.close_connection()
@@ -196,6 +211,8 @@ class ExchangeCallback(ExchangeCallbackHandler):
         self.consumer.exchange.set_callback(self)
 
     def on_exchange_declare(self, _frame):
+        if not self.consumer.channel:
+            raise EmptyChannelErr(self.consumer.channel)
         self._logger.info("Exchange declared")
         ch = self.consumer.channel.get_channel()
         self.consumer.queue.setup_queue(ch)
@@ -235,11 +252,19 @@ class QueueCallback(QueueCallbackHandler):
         self.consumer.queue.set_callback(self)
 
     def on_queue_declare(self, _frame):
+        if not self.consumer.channel:
+            raise EmptyChannelErr(self.consumer.queue)
+        if not self.consumer.queue:
+            raise EmptyQueueErr(self.consumer.queue)
         self.consumer.queue.bind_queue(
             self.consumer.exchange, self.consumer.channel.get_channel()
         )
 
     def on_queue_bind(self, _frame):
+        if not self.consumer.channel:
+            raise EmptyChannelErr(self.consumer.queue)
+        if not self.consumer.queue:
+            raise EmptyQueueErr(self.consumer.queue)
         self._logger.info(f"Queue bound: {self.consumer.queue.name}")
         self.consumer.queue.set_qos(self.consumer.channel.get_channel())
 
@@ -307,6 +332,8 @@ class ConsumerCallback(ConsumerCallbackHandler):
         self.consumer.set_callback(self)
 
     def on_consumer_cancelled(self, method_frame):
+        if not self.consumer.channel:
+            raise EmptyChannelErr(self.consumer.channel)
         self._logger.info(
             f"Consumer was cancelled remotely, shutting down: {method_frame}"
         )
@@ -314,7 +341,9 @@ class ConsumerCallback(ConsumerCallbackHandler):
         if ch:
             ch.close()
 
-    def on_cancel_ok(self, *args, **kwargs):
+    def on_cancel_ok(self, _method_frame):
+        if not self.consumer.channel:
+            raise EmptyChannelErr(self.consumer.channel)
         self.consumer.consuming = False
         self._logger.info(
             f"Acknowledged the cancellation of the consumer: {self.consumer.consumer_tag}"
