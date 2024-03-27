@@ -7,8 +7,8 @@ import time
 from dotmap import DotMap
 from message.write import Message
 from message_broker.handlers import rabbitmq as mq
-from utils.constants import Config
-from utils.logger import BuiltinLogger
+from utils.constants import Config, GenericConstants
+from utils.logger import create_logger
 
 
 class Connection:
@@ -21,15 +21,18 @@ class Connection:
     def _create_consumer(self):
         # Setting the logger
         # TODO: use the correct logging service (db based)
-        self._logger = BuiltinLogger(
+        log_fac = create_logger(GenericConstants.GENERIC_LOGGER)
+        self._logger = log_fac.get_logger(
             name=__name__,
             log_format=Config.LOG_FORMAT.value,
             handler=Config.LOG_FILE_HANDLER,
         )
         self._logger.info("Initiating a new connection ...")
         # Creating new connection
+        conn_method_fac = mq.create_connection_method(GenericConstants.URL_CONN_METHOD)
         conn = mq.Connection(
-            conn_method=mq.URLMethod(self._config), logger=self._logger
+            conn_method=conn_method_fac.get_connection_method(self._config),
+            logger=self._logger,
         )
         # Creating new channel
         chan = mq.Channel(logger=self._logger)
@@ -47,7 +50,6 @@ class Connection:
             logger=self._logger,
         )
         # Creating new consumer
-        # TODO: Set the message callback
         self._consumer = mq.Consumer(
             connection=conn,
             channel=chan,

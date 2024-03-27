@@ -11,6 +11,7 @@ from message_broker.handlers.base_handler import (
     ConnectionCallbackHandler,
     ConnectionHandler,
     ConnectionMethod,
+    ConnectionMethodFactory,
     ConsumerCallbackHandler,
     ConsumerHandler,
     ExchangeCallbackHandler,
@@ -19,7 +20,7 @@ from message_broker.handlers.base_handler import (
     QueueHandler,
 )
 from pika.channel import Channel as PikaChannel
-from utils.constants import Config
+from utils.constants import Config, GenericConstants
 from utils.exceptions import (
     EmptyCallbackErr,
     EmptyChannelErr,
@@ -55,6 +56,18 @@ class ParameterMethod(ConnectionMethod):
         user = os.environ.get(Config.MQ_USER.value, Config.MQ_USER_DEFAULT.value)
         pswd = os.environ.get(Config.MQ_PASS.value, Config.MQ_PASS_DEFAULT.value)
         return f"amqp://{user}:{pswd}@{host}:{port}/"
+
+
+class URLBasedConnection(ConnectionMethodFactory):
+
+    def get_connection_method(self, config: DotMap) -> URLMethod:
+        return URLMethod(config)
+
+
+class ParameterBasedConnection(ConnectionMethodFactory):
+
+    def get_connection_method(self, config: DotMap) -> ParameterMethod:
+        return ParameterMethod(config)
 
 
 class ConnectionCallback(ConnectionCallbackHandler):
@@ -448,3 +461,12 @@ class Consumer(ConsumerHandler):
 
     def set_callback(self, callback):
         self._callback = callback
+
+
+def create_connection_method(conn_method: GenericConstants) -> ConnectionMethodFactory:
+    """Return the connection method instance"""
+    factories = {
+        GenericConstants.URL_CONN_METHOD: URLBasedConnection(),
+        GenericConstants.PARAM_CONN_METHOD: ParameterBasedConnection(),
+    }
+    return factories[conn_method]

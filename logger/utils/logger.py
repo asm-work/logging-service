@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 
-from utils.constants import Config
+from utils.constants import Config, GenericConstants
 
 
 class LoggingHandler(ABC):
@@ -103,3 +103,31 @@ class BuiltinLogger(LoggingHandler):
 
 
 # TODO: Need to implement the DB based logging
+
+
+class LoggerFactory(ABC):
+
+    def get_logger(self) -> LoggingHandler:
+        """Returns the logging handler instance"""
+        pass
+
+
+class ConsoleLogger(LoggerFactory):
+
+    def get_logger(self, *args, **kwargs) -> PrintLogger:
+        return PrintLogger(*args, **kwargs)
+
+
+class GenericLogger(LoggerFactory):
+
+    def get_logger(self, *args, **kwargs) -> BuiltinLogger:
+        return BuiltinLogger(*args, **kwargs)
+
+
+def create_logger(logger: GenericConstants) -> LoggerFactory:
+    factories = {
+        GenericConstants.CONSOLE_LOGGER: ConsoleLogger(),
+        GenericConstants.GENERIC_LOGGER: GenericLogger(),
+    }
+
+    return factories[logger]

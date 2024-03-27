@@ -4,6 +4,7 @@ Base handlers
 
 from abc import ABC, abstractmethod
 
+from dotmap import DotMap
 from utils.logger import LoggingHandler
 
 
@@ -18,6 +19,13 @@ class ConnectionMethod(ABC):
         """Return the URL as a string
         independent of the connection parameters
         """
+        pass
+
+
+class ConnectionMethodFactory(ABC):
+
+    @abstractmethod
+    def get_connection_method(self, config: DotMap):
         pass
 
 

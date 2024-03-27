@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, auto
 
 
 class Config(Enum):
@@ -30,3 +30,13 @@ class Config(Enum):
 class TestConfig(Enum):
     TEST_SECRET_PATH = "TEST_SECRET_PATH"
     TEST_ENV = "TEST_ENV"
+
+
+class GenericConstants(Enum):
+    # Logger
+    CONSOLE_LOGGER = auto()
+    GENERIC_LOGGER = auto()
+    # MessageBroker
+    RABBIT_MQ_CLIENT = auto()
+    URL_CONN_METHOD = auto()
+    PARAM_CONN_METHOD = auto()
