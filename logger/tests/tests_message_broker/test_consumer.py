@@ -18,6 +18,17 @@ from utils.exceptions import (
 )
 
 
+class MonkeyPatchModules(Enum):
+    PIKA = "message_broker.handlers.rabbitmq.pika"
+    LOGGER = "utils.logger.BuiltinLogger"
+    CONN_CB = "message_broker.handlers.rabbitmq.ConnectionCallback"
+    CHAN_CB = "message_broker.handlers.rabbitmq.ChannelCallback"
+    EXCH_CB = "message_broker.handlers.rabbitmq.ExchangeCallback"
+    QUEUE_CB = "message_broker.handlers.rabbitmq.QueueCallback"
+    CONSUMER_CB = "message_broker.handlers.rabbitmq.ConsumerCallback"
+    MESSAGE_CB = "message.write.Message"
+
+
 class MockModules(Enum):
     ENV = auto()
     PIKA = auto()
@@ -40,12 +51,12 @@ class ConsumerBaseTest(BaseTest):
     def mock_pika(self, monkeypatch: MonkeyPatch):
         self.mocked_pika = Mock()
         self.mocked_pika.SelectConnection.return_value = pika.SelectConnection()
-        monkeypatch.setattr("message_broker.handlers.rabbitmq.pika", self.mocked_pika)
+        monkeypatch.setattr(MonkeyPatchModules.PIKA.value, self.mocked_pika)
 
     def mock_logger(self, monkeypatch: MonkeyPatch):
         self.mocked_logger = Mock()
         self.mocked_logger.BuiltinLogger.return_value = logger.BuiltinLogger()
-        monkeypatch.setattr("utils.logger.BuiltinLogger", self.mocked_logger)
+        monkeypatch.setattr(MonkeyPatchModules.LOGGER.value, self.mocked_logger)
 
     def mock_conn_callback(self, monkeypatch: MonkeyPatch):
         self.mocked_conn_callback = Mock()
@@ -53,7 +64,7 @@ class ConsumerBaseTest(BaseTest):
             callbacks.ConnectionCallback()
         )
         monkeypatch.setattr(
-            "message_broker.handlers.rabbitmq.ConnectionCallback",
+            MonkeyPatchModules.CONN_CB.value,
             self.mocked_conn_callback,
         )
 
@@ -63,7 +74,7 @@ class ConsumerBaseTest(BaseTest):
             callbacks.ChannelCallback()
         )
         monkeypatch.setattr(
-            "message_broker.handlers.rabbitmq.ChannelCallback",
+            MonkeyPatchModules.CHAN_CB.value,
             self.mocked_chan_callback,
         )
 
@@ -73,7 +84,7 @@ class ConsumerBaseTest(BaseTest):
             callbacks.ExchangeCallback()
         )
         monkeypatch.setattr(
-            "message_broker.handlers.rabbitmq.ExchangeCallback",
+            MonkeyPatchModules.EXCH_CB.value,
             self.mocked_exch_callback,
         )
 
@@ -83,7 +94,7 @@ class ConsumerBaseTest(BaseTest):
             callbacks.QueueCallback()
         )
         monkeypatch.setattr(
-            "message_broker.handlers.rabbitmq.QueueCallback",
+            MonkeyPatchModules.QUEUE_CB.value,
             self.mocked_queue_callback,
         )
 
@@ -93,7 +104,7 @@ class ConsumerBaseTest(BaseTest):
             callbacks.ConsumerCallback()
         )
         monkeypatch.setattr(
-            "message_broker.handlers.rabbitmq.ConsumerCallback",
+            MonkeyPatchModules.CONSUMER_CB.value,
             self.mocked_consumer_callback,
         )
 
@@ -193,7 +204,7 @@ class ConsumerBaseTest(BaseTest):
         self.mocked_message_callback = Mock()
         self.mocked_message_callback.Message.return_value = callbacks.MessageCallback()
         monkeypatch.setattr(
-            "message.write.Message",
+            MonkeyPatchModules.MESSAGE_CB.value,
             self.mocked_message_callback,
         )
 

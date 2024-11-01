@@ -46,3 +46,24 @@ class EmptyQueueErr(Exception):
     def __init__(self, queue: object) -> None:
         self.message = f"Expect a queue object, got {queue} instead. Make sure to initialize/declare the queue"
         super().__init__(self.message)
+
+
+class MessageLogTypeErr(Exception):
+
+    def __init__(self, log_type: str) -> None:
+        self.message = f"Invalid log type: {log_type}"
+        super().__init__(self.message)
+
+
+class MessageComponentTypeErr(Exception):
+
+    def __init__(self, component: object, cmp_base_class: object) -> None:
+        self.message = f"Invalid component type: {component}, Must be an instance of {cmp_base_class}"
+        super().__init__(self.message)
+
+
+class MessageComponentPropertyErr(Exception):
+
+    def __init__(self, component: object) -> None:
+        self.message = f"Empty/Invalid component properties: {component}, values: {vars(component)}"
+        super().__init__(self.message)
